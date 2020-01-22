@@ -6,20 +6,6 @@ type client struct {
 	balanceTable     string
 	reservationTable string
 	transactionTable string
-
-	db DatabaseDriver
-}
-
-func (c client) init(
-	balanceTable string,
-	reservationTable string,
-	salesTable string,
-) {
-	c.db = NewDynamoDatabase()
-
-	c.balanceTable = balanceTable
-	c.reservationTable = reservationTable
-	c.transactionTable = salesTable
 }
 
 func (c client) Reserve(sessionId string, externalId string, amount float32) (*reservation, error) {
@@ -59,31 +45,31 @@ func (c client) Sell(reservationId string) (*transaction, error) {
 }
 
 func (c client) GetReservation(reservationId string) (*reservation, error) {
-	result, err := c.db.getItem(c.reservationTable, "reservation_id", reservationId, &reservation{})
+	result, err := Dynamo.getItem(c.reservationTable, "reservation_id", reservationId, &reservation{})
 
 	if err != nil {
 		return nil, err
 	}
 
-	reservation := result.(reservation)
-	return &reservation, nil
+	reservation := result.(*reservation)
+	return reservation, nil
 }
 
 func (c client) GetBalance(externalId string) (*balance, error) {
-	result, err := c.db.getItem(c.balanceTable, "external_id", externalId, &balance{})
+	result, err := Dynamo.getItem(c.balanceTable, "external_id", externalId, &balance{})
 
 	if err != nil {
 		return nil, err
 	}
 
-	balance := result.(balance)
-	return &balance, nil
+	balance := result.(*balance)
+	return balance, nil
 }
 
 func (c client) ListReservations(sessionId string) (*[]reservation, error) {
 
-	var reservations []reservation
-	result, err := c.db.listItems(c.reservationTable, map[string]string{
+	reservations := &[]reservation{}
+	result, err := Dynamo.listItems(c.reservationTable, "session_id-index", map[string]string{
 		"session_id": sessionId,
 	}, reservations)
 
@@ -91,15 +77,15 @@ func (c client) ListReservations(sessionId string) (*[]reservation, error) {
 		return nil, err
 	}
 
-	reservations = result.([]reservation)
-	return &reservations, nil
+	reservations = result.(*[]reservation)
+	return reservations, nil
 }
 
 func (c client) processSale(reservation *reservation) (*transaction, error) {
 
 	transaction := NewTransaction(reservation.ExternalId, reservation.Amount)
 
-	err := c.db.saveItem(c.transactionTable, transaction)
+	err := Dynamo.saveItem(c.transactionTable, transaction)
 
 	if err != nil {
 		return nil, err
@@ -119,13 +105,13 @@ func (c client) processReservation(reservation *reservation) (*balance, error) {
 
 	balance.Reserved += reservation.Amount
 
-	err = c.db.saveItem(c.balanceTable, balance)
+	err = Dynamo.saveItem(c.balanceTable, balance)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = c.db.saveItem(c.reservationTable, reservation)
+	err = Dynamo.saveItem(c.reservationTable, reservation)
 
 	return balance, err
 }
@@ -139,13 +125,13 @@ func (c client) processRelease(reservation *reservation) (*balance, error) {
 
 	balance.Reserved -= reservation.Amount
 
-	err = c.db.saveItem(c.balanceTable, balance)
+	err = Dynamo.saveItem(c.balanceTable, balance)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = c.db.deleteItem(c.reservationTable, "reservation_id", reservation.ReservationId)
+	err = Dynamo.deleteItem(c.reservationTable, "reservation_id", reservation.ReservationId)
 
 	return balance, err
 }
@@ -181,7 +167,10 @@ func NewJumboLoyaltyClient(
 	transactionTable string,
 ) *client {
 	client := new(client)
-	client.init(balanceTable, reservationTable, transactionTable)
+
+	client.reservationTable = reservationTable
+	client.transactionTable = transactionTable
+	client.balanceTable     = balanceTable
 
 	return client
 }

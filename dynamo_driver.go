@@ -14,15 +14,16 @@ type DatabaseDriver interface {
 	listItems(table string, conditions map[string]string, objects interface{}) (interface{}, error)
 }
 
-type dynamoDatabase struct {
-	db *dynamodb.DynamoDB
-}
-
-func (d dynamoDatabase) init() {
-	sess := awsSession.Must(awsSession.NewSessionWithOptions(awsSession.Options{
+var (
+	Dynamo *dynamoDatabase
+	database = dynamodb.New(awsSession.Must(awsSession.NewSessionWithOptions(awsSession.Options{
 		SharedConfigState: awsSession.SharedConfigEnable,
-	}))
-	d.db = dynamodb.New(sess)
+	})))
+)
+
+type dynamoDatabase struct {
+	db      *dynamodb.DynamoDB
+	Session *awsSession.Session
 }
 
 func (d dynamoDatabase) saveItem(table string, data interface{}) error {
@@ -79,7 +80,12 @@ func (d dynamoDatabase) getItem(table string, key string, value string, object i
 }
 
 // @todo we should add more options then key,val EQ.
-func (d dynamoDatabase) listItems(table string, conditions map[string]string, objects interface{}) (interface{}, error) {
+func (d dynamoDatabase) listItems(
+	table string,
+	index string,
+	conditions map[string]string,
+	objects interface{},
+) (interface{}, error) {
 
 	queryConditions := make(map[string]*dynamodb.Condition)
 	for key, value := range conditions {
@@ -96,6 +102,7 @@ func (d dynamoDatabase) listItems(table string, conditions map[string]string, ob
 	}
 
 	queryInput := &dynamodb.QueryInput{
+		IndexName: aws.String(index),
 		KeyConditions: queryConditions,
 		TableName:     aws.String(table),
 	}
@@ -111,9 +118,7 @@ func (d dynamoDatabase) listItems(table string, conditions map[string]string, ob
 	return objects, err
 }
 
-func NewDynamoDatabase() *dynamoDatabase {
-	db := new(dynamoDatabase)
-	db.init()
-
-	return db
+func init() {
+	Dynamo = new(dynamoDatabase)
+	Dynamo.db = database
 }
