@@ -3,11 +3,11 @@ package JumboLoyaltyClient
 import "github.com/pkg/errors"
 
 type client struct {
-	balanceTable string
+	balanceTable     string
 	reservationTable string
 	transactionTable string
 
-	db   DatabaseDriver
+	db DatabaseDriver
 }
 
 func (c client) init(
@@ -17,7 +17,7 @@ func (c client) init(
 ) {
 	c.db = NewDynamoDatabase()
 
-	c.balanceTable     = balanceTable
+	c.balanceTable = balanceTable
 	c.reservationTable = reservationTable
 	c.transactionTable = salesTable
 }
@@ -78,6 +78,21 @@ func (c client) GetBalance(externalId string) (*balance, error) {
 
 	balance := result.(balance)
 	return &balance, nil
+}
+
+func (c client) ListReservations(sessionId string) (*[]reservation, error) {
+
+	var reservations []reservation
+	result, err := c.db.listItems(c.reservationTable, map[string]string{
+		"session_id": sessionId,
+	}, reservations)
+
+	if err != nil {
+		return nil, err
+	}
+
+	reservations = result.([]reservation)
+	return &reservations, nil
 }
 
 func (c client) processSale(reservation *reservation) (*transaction, error) {

@@ -2,7 +2,7 @@ package JumboLoyaltyClient
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	awsSession "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
@@ -11,15 +11,16 @@ type DatabaseDriver interface {
 	saveItem(table string, data interface{}) error
 	deleteItem(table string, key string, value string) error
 	getItem(table string, key string, value string, object interface{}) (interface{}, error)
+	listItems(table string, conditions map[string]string, objects interface{}) (interface{}, error)
 }
 
 type dynamoDatabase struct {
-	db   *dynamodb.DynamoDB
+	db *dynamodb.DynamoDB
 }
 
 func (d dynamoDatabase) init() {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
+	sess := awsSession.Must(awsSession.NewSessionWithOptions(awsSession.Options{
+		SharedConfigState: awsSession.SharedConfigEnable,
 	}))
 	d.db = dynamodb.New(sess)
 }
@@ -32,8 +33,8 @@ func (d dynamoDatabase) saveItem(table string, data interface{}) error {
 	}
 
 	input := &dynamodb.PutItemInput{
-		Item:       av,
-		TableName:  aws.String(table),
+		Item:      av,
+		TableName: aws.String(table),
 	}
 
 	_, err = d.db.PutItem(input)
@@ -75,6 +76,39 @@ func (d dynamoDatabase) getItem(table string, key string, value string, object i
 	err = dynamodbattribute.UnmarshalMap(result.Item, &object)
 
 	return object, err
+}
+
+// @todo we should add more options then key,val EQ.
+func (d dynamoDatabase) listItems(table string, conditions map[string]string, objects interface{}) (interface{}, error) {
+
+	queryConditions := make(map[string]*dynamodb.Condition)
+	for key, value := range conditions {
+		condition := dynamodb.Condition{
+			ComparisonOperator: aws.String("EQ"),
+			AttributeValueList: []*dynamodb.AttributeValue{
+				{
+					S: aws.String(value),
+				},
+			},
+		}
+
+		queryConditions[key] = &condition
+	}
+
+	queryInput := &dynamodb.QueryInput{
+		KeyConditions: queryConditions,
+		TableName:     aws.String(table),
+	}
+
+	result, err := d.db.Query(queryInput)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, objects)
+
+	return objects, err
 }
 
 func NewDynamoDatabase() *dynamoDatabase {
