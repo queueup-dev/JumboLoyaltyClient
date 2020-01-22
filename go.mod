@@ -1,4 +1,4 @@
-module queueup-dev/JumboLoyaltyClient
+module github.com/queueup-dev/JumboLoyaltyClient
 
 go 1.13
 
