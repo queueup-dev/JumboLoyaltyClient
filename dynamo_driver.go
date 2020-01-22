@@ -11,11 +11,17 @@ type DatabaseDriver interface {
 	saveItem(table string, data interface{}) error
 	deleteItem(table string, key string, value string) error
 	getItem(table string, key string, value string, object interface{}) (interface{}, error)
-	listItems(table string, conditions map[string]string, objects interface{}) (interface{}, error)
+	listItems(table string, conditions []QueryCondition, objects interface{}) (interface{}, error)
+}
+
+type QueryCondition struct {
+	Key       string
+	Value     string
+	Operation string
 }
 
 var (
-	Dynamo *dynamoDatabase
+	Dynamo   *dynamoDatabase
 	database = dynamodb.New(awsSession.Must(awsSession.NewSessionWithOptions(awsSession.Options{
 		SharedConfigState: awsSession.SharedConfigEnable,
 	})))
@@ -83,28 +89,30 @@ func (d dynamoDatabase) getItem(table string, key string, value string, object i
 func (d dynamoDatabase) listItems(
 	table string,
 	index string,
-	conditions map[string]string,
+	conditions []QueryCondition,
 	objects interface{},
+	limit int64,
 ) (interface{}, error) {
 
 	queryConditions := make(map[string]*dynamodb.Condition)
-	for key, value := range conditions {
-		condition := dynamodb.Condition{
-			ComparisonOperator: aws.String("EQ"),
+	for _, condition := range conditions {
+		queryCondition := dynamodb.Condition{
+			ComparisonOperator: aws.String(condition.Operation),
 			AttributeValueList: []*dynamodb.AttributeValue{
 				{
-					S: aws.String(value),
+					S: aws.String(condition.Value),
 				},
 			},
 		}
 
-		queryConditions[key] = &condition
+		queryConditions[condition.Key] = &queryCondition
 	}
 
 	queryInput := &dynamodb.QueryInput{
-		IndexName: aws.String(index),
+		IndexName:     aws.String(index),
 		KeyConditions: queryConditions,
 		TableName:     aws.String(table),
+		Limit:         aws.Int64(limit),
 	}
 
 	result, err := d.db.Query(queryInput)

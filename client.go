@@ -69,9 +69,13 @@ func (c client) GetBalance(externalId string) (*balance, error) {
 func (c client) ListReservations(sessionId string) (*[]reservation, error) {
 
 	reservations := &[]reservation{}
-	result, err := Dynamo.listItems(c.reservationTable, "session_id-index", map[string]string{
-		"session_id": sessionId,
-	}, reservations)
+	result, err := Dynamo.listItems(c.reservationTable, "session_id-index", []QueryCondition{
+		{
+			Key:       "session_id",
+			Value:     sessionId,
+			Operation: "EQ",
+		},
+	}, reservations, 10)
 
 	if err != nil {
 		return nil, err
@@ -170,7 +174,7 @@ func NewJumboLoyaltyClient(
 
 	client.reservationTable = reservationTable
 	client.transactionTable = transactionTable
-	client.balanceTable     = balanceTable
+	client.balanceTable = balanceTable
 
 	return client
 }
