@@ -2,6 +2,7 @@ package JumboLoyaltyClient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -20,16 +21,16 @@ type BalanceAccount struct {
 }
 
 type externalClient struct {
-	balanceTable      string
-	transactionTable  string
-	baseUrl           string
-	key               string
-	secret            string
-	httpClient        *http.Client
+	balanceTable     string
+	transactionTable string
+	baseUrl          string
+	key              string
+	secret           string
+	httpClient       *http.Client
 }
 
 func (e externalClient) GetExternalBalance(cardNumber string, accountNumber int64) (*BalanceAccount, error) {
-	uri := fmt.Sprintf( "%v/customer/card/%v/overview", e.baseUrl, cardNumber)
+	uri := fmt.Sprintf("%v/customer/card/%v/overview", e.baseUrl, cardNumber)
 	request, err := http.NewRequest("GET", uri, nil)
 
 	if err != nil {
@@ -43,6 +44,10 @@ func (e externalClient) GetExternalBalance(cardNumber string, accountNumber int6
 
 	if err != nil {
 		return nil, err
+	}
+
+	if result.StatusCode >= 400 {
+		return nil, errors.New("there was a problem retrieving your card details")
 	}
 
 	response := &BalanceResponse{}
@@ -73,12 +78,12 @@ func NewExternalClient(
 ) *externalClient {
 	externalClient := new(externalClient)
 
-	externalClient.balanceTable     = balanceTable
+	externalClient.balanceTable = balanceTable
 	externalClient.transactionTable = transactionTable
-	externalClient.baseUrl          = baseUrl
-	externalClient.httpClient       = &http.Client{}
-	externalClient.key              = key
-	externalClient.secret           = secret
+	externalClient.baseUrl = baseUrl
+	externalClient.httpClient = &http.Client{}
+	externalClient.key = key
+	externalClient.secret = secret
 
 	return externalClient
 }
