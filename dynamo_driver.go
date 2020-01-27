@@ -85,6 +85,38 @@ func (d dynamoDatabase) getItem(table string, key string, value string, object i
 	return object, err
 }
 
+func (d dynamoDatabase) findItems(
+	table string,
+	filter string,
+	attributes map[string]string,
+	objects interface{},
+	limit  int64,
+) (interface{}, error){
+	expressions := map[string]*dynamodb.AttributeValue{}
+	for key, value := range attributes {
+		expressions[key] = &dynamodb.AttributeValue{
+			N:    aws.String(value),
+		}
+	}
+
+	scanInput := &dynamodb.ScanInput{
+		FilterExpression:          aws.String(filter),
+		ExpressionAttributeValues: expressions,
+		Limit:                     aws.Int64(limit),
+		TableName:                 aws.String(table),
+	}
+
+	result, err := d.db.Scan(scanInput)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, objects)
+
+	return objects, err
+}
+
 // @todo we should add more options then key,val EQ.
 func (d dynamoDatabase) listItems(
 	table string,

@@ -1,6 +1,9 @@
 package JumboLoyaltyClient
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 type sessionClient struct {
 	sessionTable string
@@ -17,26 +20,24 @@ func (s sessionClient) GetSession(sessionId string) (*session, error) {
 	return session, nil
 }
 
+func (s sessionClient) DeleteSession(sessionId string) error {
+	return Dynamo.deleteItem(s.sessionTable, "session_id", sessionId)
+}
+
 func (s sessionClient) ListExpiredSessions() (*[]session, error) {
 
-	condition := QueryCondition{
-		"expires",
-		string(time.Now().Unix()),
-		"LT",
-	}
+	sessions := &[]session{}
 
-	conditions := []QueryCondition{
-		condition,
-	}
-
-	result, err := Dynamo.listItems(s.sessionTable, "expires-index", conditions, &[]session{}, 50)
+	result, err := Dynamo.findItems(s.sessionTable, "expires <= :now", map[string]string{
+		":now": strconv.Itoa(int(time.Now().Unix())),
+	}, sessions, 50)
 
 	if err != nil {
 		return nil, err
 	}
 
-	session := result.(*[]session)
-	return session, nil
+	sessions = result.(*[]session)
+	return sessions, nil
 }
 
 func NewSessionClient(sessionTable string) *sessionClient {

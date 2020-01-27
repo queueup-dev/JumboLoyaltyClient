@@ -1,6 +1,8 @@
 package JumboLoyaltyClient
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
 type client struct {
 	balanceTable     string
@@ -163,6 +165,30 @@ func (c client) GetNumericBalance(externalId string) (float32, error) {
 	}
 
 	return balance.Balance - (balance.Reserved + balance.Pending), nil
+}
+
+func (c client) SaveBalance(externalId string, amount float32) (*balance, error) {
+
+	balanceRecord, err := c.GetBalance(externalId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if balanceRecord.ExternalId == "" {
+		balanceRecord = &balance{
+			ExternalId:  externalId,
+			Balance:     amount,
+			Reserved:    0,
+			Pending:     0,
+		}
+	}
+
+	balanceRecord.Balance = amount
+
+	err = Dynamo.saveItem(c.balanceTable, balanceRecord)
+
+	return balanceRecord, err
 }
 
 func NewJumboLoyaltyClient(
