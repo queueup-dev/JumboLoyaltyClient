@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type BalanceResponse struct {
@@ -20,6 +21,10 @@ type BalanceAccount struct {
 	Updated string `json:"updateOn"`
 }
 
+type externalTransaction struct {
+	Amount int32 `json:"amount"`
+}
+
 type externalClient struct {
 	balanceTable     string
 	transactionTable string
@@ -27,6 +32,37 @@ type externalClient struct {
 	key              string
 	secret           string
 	httpClient       *http.Client
+}
+
+func (e externalClient) Spend(cardNumber string, amount int32) error {
+	uri := fmt.Sprintf("%v/customer/card/%v/redeem", e.baseUrl, cardNumber)
+
+	marshalledBody, err := json.Marshal(&externalTransaction{Amount: amount})
+
+	if err != nil {
+		return err
+	}
+
+	request, err := http.NewRequest("POST", uri, strings.NewReader(string(marshalledBody)))
+
+	if err != nil {
+		return err
+	}
+
+	request.Header.Add("x-ibm-client-id", e.key)
+	request.Header.Add("x-ibm-client-secret", e.secret)
+
+	result, err := e.httpClient.Do(request)
+
+	if err != nil {
+		return err
+	}
+
+	if result.StatusCode >= 400 {
+		return errors.New("there was a problem retrieving your card details")
+	}
+
+	return nil
 }
 
 func (e externalClient) GetExternalBalance(cardNumber string, accountNumber int64) (*BalanceAccount, error) {
