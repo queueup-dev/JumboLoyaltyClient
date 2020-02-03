@@ -18,6 +18,7 @@ type QueryCondition struct {
 	Key       string
 	Value     string
 	Operation string
+	ValueType string
 }
 
 var (
@@ -90,12 +91,12 @@ func (d dynamoDatabase) findItems(
 	filter string,
 	attributes map[string]string,
 	objects interface{},
-	limit  int64,
-) (interface{}, error){
+	limit int64,
+) (interface{}, error) {
 	expressions := map[string]*dynamodb.AttributeValue{}
 	for key, value := range attributes {
 		expressions[key] = &dynamodb.AttributeValue{
-			N:    aws.String(value),
+			N: aws.String(value),
 		}
 	}
 
@@ -128,12 +129,25 @@ func (d dynamoDatabase) listItems(
 
 	queryConditions := make(map[string]*dynamodb.Condition)
 	for _, condition := range conditions {
+
+		var attributeValue dynamodb.AttributeValue
+
+		switch condition.ValueType {
+		case "N":
+			attributeValue = dynamodb.AttributeValue{
+				N: aws.String(condition.Value),
+			}
+		default:
+		case "S":
+			attributeValue = dynamodb.AttributeValue{
+				S: aws.String(condition.Value),
+			}
+		}
+
 		queryCondition := dynamodb.Condition{
 			ComparisonOperator: aws.String(condition.Operation),
 			AttributeValueList: []*dynamodb.AttributeValue{
-				{
-					S: aws.String(condition.Value),
-				},
+				&attributeValue,
 			},
 		}
 

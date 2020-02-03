@@ -31,8 +31,13 @@ func (v voucherClient) ReserveVouchers(amount int) (*[]voucher, error) {
 
 	vouchers := &[]voucher{}
 
-	result, err := Dynamo.findItems(v.voucherTable, "used = :used", map[string]string{
-		":used": "0",
+	result, err := Dynamo.listItems(v.voucherTable, "used-index", []QueryCondition{
+		{
+			Key:       "used",
+			Value:     "0",
+			Operation: "EQ",
+			ValueType: "N",
+		},
 	}, vouchers, int64(amount))
 
 	if err != nil {
