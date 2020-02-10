@@ -9,14 +9,14 @@ type sessionClient struct {
 	sessionTable string
 }
 
-func (s sessionClient) GetSession(sessionId string) (*session, error) {
-	result, err := Dynamo.getItem(s.sessionTable, "session_id", sessionId, &session{})
+func (s sessionClient) GetSession(sessionId string) (*Session, error) {
+	result, err := Dynamo.getItem(s.sessionTable, "session_id", sessionId, &Session{})
 
 	if err != nil {
 		return nil, err
 	}
 
-	session := result.(*session)
+	session := result.(*Session)
 	return session, nil
 }
 
@@ -24,9 +24,9 @@ func (s sessionClient) DeleteSession(sessionId string) error {
 	return Dynamo.deleteItem(s.sessionTable, "session_id", sessionId)
 }
 
-func (s sessionClient) ListSessionsOfExternalId(externalId string) (*[]session, error) {
+func (s sessionClient) ListSessionsOfExternalId(externalId string) (*[]Session, error) {
 
-	sessions := &[]session{}
+	sessions := &[]Session{}
 
 	result, err := Dynamo.listItems(s.sessionTable, "card_number-index", []QueryCondition{
 		{
@@ -40,13 +40,13 @@ func (s sessionClient) ListSessionsOfExternalId(externalId string) (*[]session, 
 		return nil, err
 	}
 
-	sessions = result.(*[]session)
+	sessions = result.(*[]Session)
 	return sessions, nil
 }
 
-func (s sessionClient) ListExpiredSessions() (*[]session, error) {
+func (s sessionClient) ListExpiredSessions() (*[]Session, error) {
 
-	sessions := &[]session{}
+	sessions := &[]Session{}
 
 	result, err := Dynamo.findItems(s.sessionTable, "expires <= :now", map[string]string{
 		":now": strconv.Itoa(int(time.Now().Unix())),
@@ -56,7 +56,7 @@ func (s sessionClient) ListExpiredSessions() (*[]session, error) {
 		return nil, err
 	}
 
-	sessions = result.(*[]session)
+	sessions = result.(*[]Session)
 	return sessions, nil
 }
 

@@ -1,6 +1,6 @@
 package JumboLoyaltyClient
 
-type session struct {
+type Session struct {
 	SessionId  string `json:"session_id"`
 	ExternalId string `json:"card_number"`
 	Email      string `json:"email"`
