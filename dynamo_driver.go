@@ -138,7 +138,6 @@ func (d dynamoDatabase) listItems(
 				N: aws.String(condition.Value),
 			}
 		default:
-		case "S":
 			attributeValue = dynamodb.AttributeValue{
 				S: aws.String(condition.Value),
 			}
