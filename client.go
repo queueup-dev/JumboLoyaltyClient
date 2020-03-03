@@ -164,7 +164,11 @@ func (c client) GetNumericBalance(externalId string) (float32, error) {
 		return 0, err
 	}
 
-	return balance.Balance - (balance.Reserved + balance.Pending), nil
+	return c.CalculateNumericBalance(balance), nil
+}
+
+func (c client) CalculateNumericBalance(balanceRecord *balance) float32 {
+	return (balanceRecord.Balance + balanceRecord.Credit) - (balanceRecord.Reserved + balanceRecord.Pending)
 }
 
 func (c client) SaveBalance(externalId string, amount float32) (*balance, error) {
@@ -177,10 +181,11 @@ func (c client) SaveBalance(externalId string, amount float32) (*balance, error)
 
 	if balanceRecord.ExternalId == "" {
 		balanceRecord = &balance{
-			ExternalId:  externalId,
-			Balance:     amount,
-			Reserved:    0,
-			Pending:     0,
+			ExternalId: externalId,
+			Balance:    amount,
+			Reserved:   0,
+			Pending:    0,
+			Credit:     0,
 		}
 	}
 
