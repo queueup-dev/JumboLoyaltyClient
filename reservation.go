@@ -7,7 +7,7 @@ type reservation struct {
 	ExternalId    string  `json:"external_id"`
 	SessionId     string  `json:"session_id"`
 	Amount        float32 `json:"amount"`
-	Expires       string  `json:"expires"`
+	Expires       int64   `json:"expires"`
 }
 
 func NewReservation(externalId string, sessionId string, amount float32) *reservation {
